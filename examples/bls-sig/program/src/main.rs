@@ -11,7 +11,7 @@ use rand::thread_rng;
 sp1_zkvm::entrypoint!(main);
 
 // Optionally include the generated constants
-include!(concat!(env!("OUT_DIR"), "/generated_constants.rs"));
+include!("./generated_constants.rs");
 
 pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Check if SIGNATURES, PUBLIC_KEYS, and VERIFICATION_KEYS exist
