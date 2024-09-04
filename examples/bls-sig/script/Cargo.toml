@@ -6,7 +6,7 @@ edition = "2021"
 
 [dependencies]
 sp1-sdk = { path = "../../../../sp1/crates/sdk" }
-
+lazy_static = "1.5.0"
 
 [build-dependencies]
 sp1-helper = { path = "../../../../sp1/crates/helper" }

@@ -1,9 +1,6 @@
 use bls12_381::{G1Projective, G2Projective, Scalar};
 use rand::thread_rng;
-use std::{
-    fs::{self, OpenOptions},
-    io::{self, Write},
-};
+use std::{fs::OpenOptions, io::Write};
 
 const NUM_SIGNATURES: usize = 10;
 
@@ -61,9 +58,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     output.push_str("]);\n\n");
     output.push_str(&format!("pub const NUM_SIGNATURES: usize = {};", NUM_SIGNATURES));
 
-    let out_dir = std::env::var("OUT_DIR")?;
+    // Write the generated constants to a file
+    let out_dir = "../../program/src"
     let target_path = format!("{}/generated_constants.rs", out_dir);
-    let mut target_file = OpenOptions::new().write(true).truncate(true).open(target_path)?;
+    let mut target_file =
+        OpenOptions::new().write(true).truncate(true).create(true).open(target_path)?;
     target_file.write_all(output.as_bytes())?;
 
     println!("Constants written to {}", target_path);
