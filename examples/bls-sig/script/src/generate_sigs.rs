@@ -24,60 +24,47 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let mut output = String::new();
-    output.push_str("pub const SIGNATURES: [&[u8; 32]; NUM_SIGNATURES] = [\n");
+    output.push_str("pub const SIGNATURES: Option<Vec<[u8; 32]>> = Some(vec![\n");
 
     for sig in signatures {
-        output.push_str("    &[");
+        output.push_str("    [");
         for byte in sig {
             output.push_str(&format!("0x{:02x}, ", byte));
         }
         output.push_str("],\n");
     }
 
-    output.push_str("];\n\n");
+    output.push_str("]);\n\n");
 
-    output.push_str("pub const PUBLIC_KEYS: [G1Projective; NUM_SIGNATURES] = [\n");
+    output.push_str("pub const PUBLIC_KEYS: Option<Vec<[u8; 48]>> = Some(vec![\n");
 
     for pk in public_keys {
-        output.push_str("    G1Projective::from_bytes(&[");
+        output.push_str("    [");
         for byte in pk.to_bytes() {
             output.push_str(&format!("0x{:02x}, ", byte));
         }
-        output.push_str("])?,\n");
+        output.push_str("],\n");
     }
 
-    output.push_str("];\n\n");
+    output.push_str("]);\n\n");
 
-    output.push_str("pub const VERIFICATION_KEYS: [G2Projective; NUM_SIGNATURES] = [\n");
+    output.push_str("pub const VERIFICATION_KEYS: Option<Vec<[u8; 96]>> = Some(vec![\n");
 
     for vk in verification_keys {
-        output.push_str("    G2Projective::from_bytes(&[");
+        output.push_str("    [");
         for byte in vk.to_bytes() {
             output.push_str(&format!("0x{:02x}, ", byte));
         }
-        output.push_str("])?,\n");
+        output.push_str("],\n");
     }
 
-    output.push_str("];\n\n");
+    output.push_str("]);\n\n");
     output.push_str(&format!("pub const NUM_SIGNATURES: usize = {};", NUM_SIGNATURES));
 
-    // Read the target file
-    let target_path = "../../program/src/main.rs";
-    let mut target_content = fs::read_to_string(target_path)?;
-
-    // Find the position after the last use statement
-    let insert_pos = target_content
-        .rfind("use ")
-        .map(|pos| target_content[pos..].find(';').map(|p| pos + p + 1))
-        .flatten()
-        .unwrap_or(0);
-
-    // Insert the generated constants
-    target_content.insert_str(insert_pos, &format!("\n\n{}", output));
-
-    // Write back to the target file
+    let out_dir = std::env::var("OUT_DIR")?;
+    let target_path = format!("{}/generated_constants.rs", out_dir);
     let mut target_file = OpenOptions::new().write(true).truncate(true).open(target_path)?;
-    target_file.write_all(target_content.as_bytes())?;
+    target_file.write_all(output.as_bytes())?;
 
     println!("Constants written to {}", target_path);
 
