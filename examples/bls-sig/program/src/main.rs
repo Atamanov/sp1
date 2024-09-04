@@ -23,12 +23,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let pk_point = G1Affine::from_compressed(pk.try_into()?).unwrap();
         let vk_point = G2Affine::from_compressed(vk.try_into()?).unwrap();
 
-        let is_valid = pairing(&pk_point, &G2Prepared::from(vk_point))
-            == pairing(
-                &G1Affine::generator(),
-                &G2Prepared::from(G2Affine::generator() * sig_scalar),
-            );
-
+        let sig_point = G2Affine::generator() * sig_scalar;
+        let is_valid = pairing(&G1Affine::generator(), &sig_point) == pairing(&pk_point, &vk_point);
         if !is_valid {
             return Err(format!("Invalid signature at index {}", i).into());
         }
