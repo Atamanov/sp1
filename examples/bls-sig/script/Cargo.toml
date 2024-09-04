@@ -10,3 +10,10 @@ sp1-sdk = { path = "../../../../sp1/crates/sdk" }
 
 [build-dependencies]
 sp1-helper = { path = "../../../../sp1/crates/helper" }
+
+[features]
+cuda = ["sp1-sdk/cuda"]
+
+[[bin]]
+name = "generate_sigs"
+path = "script/src/generate_sigs.rs"
