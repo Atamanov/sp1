@@ -10,8 +10,20 @@ use rand::thread_rng;
 
 sp1_zkvm::entrypoint!(main);
 
+// Optionally include the generated constants
+include!(concat!(env!("OUT_DIR"), "/generated_constants.rs"));
+
 pub fn main() -> Result<(), Box<dyn std::error::Error>> {
-    for (sig, pk, vk) in SIGNATURES.iter().zip(PUBLIC_KEYS.iter()).zip(VERIFICATION_KEYS.iter()) {
+    // Check if SIGNATURES, PUBLIC_KEYS, and VERIFICATION_KEYS exist
+    if SIGNATURES.is_none() || PUBLIC_KEYS.is_none() || VERIFICATION_KEYS.is_none() {
+        return Err("SIGNATURES, PUBLIC_KEYS, or VERIFICATION_KEYS are missing".into());
+    }
+
+    let signatures = SIGNATURES.as_ref().unwrap();
+    let public_keys = PUBLIC_KEYS.as_ref().unwrap();
+    let verification_keys = VERIFICATION_KEYS.as_ref().unwrap();
+
+    for (sig, pk, vk) in signatures.iter().zip(public_keys.iter()).zip(verification_keys.iter()) {
         let sig_scalar = Scalar::from_bytes(sig)?;
         let pk_point = G1Affine::from(pk);
         let vk_point = G2Prepared::from(vk);

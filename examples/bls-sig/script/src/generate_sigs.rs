@@ -1,40 +1,85 @@
-#![no_main]
-
-use bls12_381::{
-    fp::Fp, fp2::Fp2, multi_miller_loop, pairing, G1Affine, G1Projective, G2Affine, G2Prepared,
-    G2Projective, Scalar,
-};
-use ff::Field;
-use group::Group;
+use bls12_381::{G1Projective, G2Projective, Scalar};
 use rand::thread_rng;
+use std::{
+    fs::{self, OpenOptions},
+    io::{self, Write},
+};
 
-sp1_zkvm::entrypoint!(main);
+const NUM_SIGNATURES: usize = 10;
 
-// Optionally include the generated constants
-include!(concat!(env!("OUT_DIR"), "/generated_constants.rs"));
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut rng = thread_rng();
+    let mut signatures = Vec::with_capacity(NUM_SIGNATURES);
+    let mut public_keys = Vec::with_capacity(NUM_SIGNATURES);
+    let mut verification_keys = Vec::with_capacity(NUM_SIGNATURES);
 
-pub fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Check if SIGNATURES, PUBLIC_KEYS, and VERIFICATION_KEYS exist
-    if SIGNATURES.is_none() || PUBLIC_KEYS.is_none() || VERIFICATION_KEYS.is_none() {
-        return Err("SIGNATURES, PUBLIC_KEYS, or VERIFICATION_KEYS are missing".into());
+    for _ in 0..NUM_SIGNATURES {
+        let sk = Scalar::random(&mut rng);
+        let pk = G1Projective::generator() * sk;
+        let vk = G2Projective::generator() * sk;
+        let sig = sk.to_bytes();
+        signatures.push(sig);
+        public_keys.push(pk);
+        verification_keys.push(vk);
     }
 
-    let signatures = SIGNATURES.as_ref().unwrap();
-    let public_keys = PUBLIC_KEYS.as_ref().unwrap();
-    let verification_keys = VERIFICATION_KEYS.as_ref().unwrap();
+    let mut output = String::new();
+    output.push_str("pub const SIGNATURES: [&[u8; 32]; NUM_SIGNATURES] = [\n");
 
-    for (sig, pk, vk) in signatures.iter().zip(public_keys.iter()).zip(verification_keys.iter()) {
-        let sig_scalar = Scalar::from_bytes(sig)?;
-        let pk_point = G1Affine::from(pk);
-        let vk_point = G2Prepared::from(vk);
-
-        let is_valid = pairing(&pk_point, &vk_point) ==
-            pairing(
-                &G1Affine::generator(),
-                &G2Prepared::from(G2Projective::generator() * sig_scalar),
-            );
-        println!("Signature is valid: {}", is_valid);
+    for sig in signatures {
+        output.push_str("    &[");
+        for byte in sig {
+            output.push_str(&format!("0x{:02x}, ", byte));
+        }
+        output.push_str("],\n");
     }
+
+    output.push_str("];\n\n");
+
+    output.push_str("pub const PUBLIC_KEYS: [G1Projective; NUM_SIGNATURES] = [\n");
+
+    for pk in public_keys {
+        output.push_str("    G1Projective::from_bytes(&[");
+        for byte in pk.to_bytes() {
+            output.push_str(&format!("0x{:02x}, ", byte));
+        }
+        output.push_str("])?,\n");
+    }
+
+    output.push_str("];\n\n");
+
+    output.push_str("pub const VERIFICATION_KEYS: [G2Projective; NUM_SIGNATURES] = [\n");
+
+    for vk in verification_keys {
+        output.push_str("    G2Projective::from_bytes(&[");
+        for byte in vk.to_bytes() {
+            output.push_str(&format!("0x{:02x}, ", byte));
+        }
+        output.push_str("])?,\n");
+    }
+
+    output.push_str("];\n\n");
+    output.push_str(&format!("pub const NUM_SIGNATURES: usize = {};", NUM_SIGNATURES));
+
+    // Read the target file
+    let target_path = "../../program/src/main.rs";
+    let mut target_content = fs::read_to_string(target_path)?;
+
+    // Find the position after the last use statement
+    let insert_pos = target_content
+        .rfind("use ")
+        .map(|pos| target_content[pos..].find(';').map(|p| pos + p + 1))
+        .flatten()
+        .unwrap_or(0);
+
+    // Insert the generated constants
+    target_content.insert_str(insert_pos, &format!("\n\n{}", output));
+
+    // Write back to the target file
+    let mut target_file = OpenOptions::new().write(true).truncate(true).open(target_path)?;
+    target_file.write_all(target_content.as_bytes())?;
+
+    println!("Constants written to {}", target_path);
 
     Ok(())
 }
