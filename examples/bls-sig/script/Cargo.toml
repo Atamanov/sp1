@@ -16,4 +16,4 @@ cuda = ["sp1-sdk/cuda"]
 
 [[bin]]
 name = "generate_sigs"
-path = "script/src/generate_sigs.rs"
+path = "src/generate_sigs.rs"
