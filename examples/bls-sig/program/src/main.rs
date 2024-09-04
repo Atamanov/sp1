@@ -23,7 +23,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let pk_point = G1Affine::from_compressed(pk.try_into()?).unwrap();
         let vk_point = G2Affine::from_compressed(vk.try_into()?).unwrap();
 
-        let sig_point = (G2Affine::generator() * sig_scalar).into_affine();
+        let sig_point = (G2Affine::generator() * sig_scalar).to_affine();
         let is_valid = pairing(&G1Affine::generator(), &sig_point) == pairing(&pk_point, &vk_point);
         if !is_valid {
             return Err(format!("Invalid signature at index {}", i).into());
@@ -33,5 +33,3 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("All signatures are valid!");
     Ok(())
 }
-
-sp1_zkvm::entrypoint!(main);
