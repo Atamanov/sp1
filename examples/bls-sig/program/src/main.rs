@@ -1,40 +1,41 @@
-#![no_main]
+use bls12_381::{pairing, G1Affine, G2Affine, G2Prepared, Scalar};
+use sp1_zkvm::prelude::*;
 
-use bls12_381::{
-    fp::Fp, fp2::Fp2, multi_miller_loop, pairing, G1Affine, G1Projective, G2Affine, G2Prepared,
-    G2Projective, Scalar,
-};
-use ff::Field;
-use group::Group;
-use rand::thread_rng;
+// Import the generated constants
+mod generated_constants;
+use generated_constants::{NUM_SIGNATURES, PUBLIC_KEYS, SIGNATURES, VERIFICATION_KEYS};
 
-sp1_zkvm::entrypoint!(main);
-
-// Optionally include the generated constants
-include!("./generated_constants.rs");
-
-pub fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Check if SIGNATURES, PUBLIC_KEYS, and VERIFICATION_KEYS exist
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     if SIGNATURES.is_none() || PUBLIC_KEYS.is_none() || VERIFICATION_KEYS.is_none() {
-        return Err("SIGNATURES, PUBLIC_KEYS, or VERIFICATION_KEYS are missing".into());
+        return Err("Missing generated constants".into());
     }
 
     let signatures = SIGNATURES.as_ref().unwrap();
     let public_keys = PUBLIC_KEYS.as_ref().unwrap();
     let verification_keys = VERIFICATION_KEYS.as_ref().unwrap();
 
-    for (sig, pk, vk) in signatures.iter().zip(public_keys.iter()).zip(verification_keys.iter()) {
-        let sig_scalar = Scalar::from_bytes(sig)?;
-        let pk_point = G1Affine::from(pk);
-        let vk_point = G2Prepared::from(vk);
+    for i in 0..NUM_SIGNATURES {
+        let sig = &signatures[i];
+        let pk = &public_keys[i];
+        let vk = &verification_keys[i];
 
-        let is_valid = pairing(&pk_point, &vk_point)
+        let sig_scalar = Scalar::from_bytes(sig.try_into()?).unwrap();
+        let pk_point = G1Affine::from_compressed(pk.try_into()?).unwrap();
+        let vk_point = G2Affine::from_compressed(vk.try_into()?).unwrap();
+
+        let is_valid = pairing(&pk_point, &G2Prepared::from(vk_point))
             == pairing(
                 &G1Affine::generator(),
-                &G2Prepared::from(G2Projective::generator() * sig_scalar),
+                &G2Prepared::from(G2Affine::generator() * sig_scalar),
             );
-        println!("Signature is valid: {}", is_valid);
+
+        if !is_valid {
+            return Err(format!("Invalid signature at index {}", i).into());
+        }
     }
 
+    println!("All signatures are valid!");
     Ok(())
 }
+
+sp1_zkvm::entrypoint!(main);
